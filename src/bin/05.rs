@@ -1,24 +1,36 @@
-use std::str::FromStr;
+use std::collections::{HashMap, HashSet};
 
 advent_of_code::solution!(5);
 
-#[derive(PartialEq, Eq, Debug)]
-struct Rule {
-    from: u32,
-    to: u32,
+struct RuleSet {
+    rules: HashMap<u32, HashSet<u32>>,
 }
 
-fn parse(input: &str) -> (Vec<Rule>, Vec<Vec<u32>>) {
-    let rules = input
+impl RuleSet {
+    fn is_valid(&self, from: u32, to: u32) -> bool {
+        !self.rules.get(&to)
+            .map_or(false, |h| h.contains(&from))
+    }
+}
+
+fn parse(input: &str) -> (RuleSet, Vec<Vec<u32>>) {
+    let mut rules: HashMap<u32, HashSet<u32>> = HashMap::new();
+    input
         .lines()
         .take_while(|line| !line.is_empty())
         .map(|line| {
             let mut parts = line.split('|');
             let from = parts.next().unwrap().parse().unwrap();
             let to = parts.next().unwrap().parse().unwrap();
-            Rule { from, to }
+            (from, to)
         })
-        .collect();
+        .for_each(|(f, t)| {
+            rules.entry(f).or_default().insert(t);
+        });
+
+    let ruleset = RuleSet {
+        rules
+    };
 
     let pages = input
         .lines()
@@ -27,16 +39,14 @@ fn parse(input: &str) -> (Vec<Rule>, Vec<Vec<u32>>) {
         .map(|line| line.split(",").map(|s| s.parse().unwrap()).collect())
         .collect();
 
-    (rules, pages)
+    (ruleset, pages)
 }
 
-fn is_valid(rules: &Vec<Rule>, manual: &Vec<u32>) -> bool {
+fn is_valid(rules: &RuleSet, manual: &Vec<u32>) -> bool {
     for i in 0..manual.len() {
         for j in 0..i {
-            for rule in rules {
-                if rule.from == manual[i] && rule.to == manual[j] {
-                    return false;
-                }
+            if !rules.is_valid(manual[j], manual[i]) {
+                return false;
             }
         }
     }
@@ -49,10 +59,7 @@ pub fn part_one(input: &str) -> Option<u32> {
         .filter(|v| is_valid(&rules, v))
         .collect::<Vec<_>>();
 
-    let ans = valid
-        .into_iter()
-        .map(|v| v[v.len() / 2])
-        .sum();
+    let ans = valid.into_iter().map(|v| v[v.len() / 2]).sum();
 
     Some(ans)
 }
@@ -68,10 +75,6 @@ mod tests {
     #[test]
     fn test_parse() {
         let (rules, pages) = parse("1|2\n3|4\n\n1,2,3\n3,4");
-        assert_eq!(
-            rules,
-            vec![Rule { from: 1, to: 2 }, Rule { from: 3, to: 4 }]
-        );
         assert_eq!(pages, vec![vec![1, 2, 3], vec![3, 4]]);
     }
 
