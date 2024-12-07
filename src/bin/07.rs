@@ -24,6 +24,17 @@ impl From<&str> for Puzzle {
     }
 }
 
+fn concat(x: u64, y: u64) -> u64 {
+    let mut y1 = y;
+    let mut x = x;
+    while y1 > 0 {
+        x *= 10;
+        y1 /= 10;
+    }
+
+    x + y
+}
+
 impl Puzzle {
     fn is_achieavable_part_one(&self) -> bool {
         let mut frontier = HashSet::new();
@@ -36,6 +47,27 @@ impl Puzzle {
                 if f <= self.target {
                     new_frontier.insert(f + v);
                     new_frontier.insert(f * v);
+                }
+            }
+
+            frontier = new_frontier;
+        }
+
+        frontier.contains(&self.target)
+    }
+
+    fn is_achieavable_part_two(&self) -> bool {
+        let mut frontier = HashSet::new();
+        let mut operands = self.operands.iter().copied();
+        frontier.insert(operands.next().unwrap());
+
+        while let Some(v) = operands.next() {
+            let mut new_frontier = HashSet::new();
+            for f in frontier {
+                if f <= self.target {
+                    new_frontier.insert(f + v);
+                    new_frontier.insert(f * v);
+                    new_frontier.insert(concat(f, v));
                 }
             }
 
@@ -64,8 +96,16 @@ pub fn part_one(input: &str) -> Option<u64> {
     Some(ans)
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<u64> {
+    let puzzles = parse(input);
+
+    let ans = puzzles
+        .into_iter()
+        .filter(|p| p.is_achieavable_part_two())
+        .map(|p| p.target)
+        .sum();
+
+    Some(ans)
 }
 
 #[cfg(test)]
@@ -96,6 +136,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(11387));
     }
 }
