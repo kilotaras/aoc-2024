@@ -8,8 +8,7 @@ struct RuleSet {
 
 impl RuleSet {
     fn is_valid(&self, from: u32, to: u32) -> bool {
-        !self.rules.get(&to)
-            .map_or(false, |h| h.contains(&from))
+        !self.rules.get(&to).map_or(false, |h| h.contains(&from))
     }
 }
 
@@ -28,9 +27,7 @@ fn parse(input: &str) -> (RuleSet, Vec<Vec<u32>>) {
             rules.entry(f).or_default().insert(t);
         });
 
-    let ruleset = RuleSet {
-        rules
-    };
+    let ruleset = RuleSet { rules };
 
     let pages = input
         .lines()
@@ -64,8 +61,43 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(ans)
 }
 
+fn fix(rules: &RuleSet, v: Vec<u32>) -> Vec<u32> {
+    let mut v = v;
+    let mut ans = Vec::new();
+
+    let is_ok =
+        |v: &Vec<u32>, candidate: u32| v.iter().all(|other| rules.is_valid(candidate, *other));
+
+    while !v.is_empty() {
+        let (pos, found) = v
+            .iter()
+            .enumerate()
+            .filter(|(p, candidate)| is_ok(&v, **candidate))
+            .next()
+            .unwrap();
+
+        ans.push(*found);
+        v.swap_remove(pos);
+    }
+
+    ans
+}
+
 pub fn part_two(input: &str) -> Option<u32> {
-    None
+    let (rules, pages) = parse(input);
+    let invalid = pages
+        .into_iter()
+        .filter(|v| !is_valid(&rules, v))
+        .collect::<Vec<_>>();
+
+    let fixed = invalid
+        .into_iter()
+        .map(|v| fix(&rules, v))
+        .collect::<Vec<_>>();
+
+    let ans = fixed.into_iter().map(|v| v[v.len() / 2]).sum();
+
+    Some(ans)
 }
 
 #[cfg(test)]
@@ -87,6 +119,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(123));
     }
 }
