@@ -24,18 +24,6 @@ impl From<&str> for Puzzle {
     }
 }
 
-fn concat(x: u64, y: u64) -> u64 {
-    let mut y1 = y;
-    let mut x = x;
-    while y1 > 0 {
-        x *= 10;
-        y1 /= 10;
-    }
-
-    x + y
-}
-
-
 fn log10ceil(x: u64) -> u64 {
     let mut ans = 1;
     while ans <= x {
@@ -45,8 +33,74 @@ fn log10ceil(x: u64) -> u64 {
     ans
 }
 
+trait ReverseOp {
+    fn reverse(&self, target: u64) -> Vec<u64>;
+    fn value(&self) -> u64;
+}
 
-fn is_achieavable_part_two_fast(target: u64, operands: &[u64]) -> bool {
+struct OpPart1(u64);
+
+impl ReverseOp for OpPart1 {
+    fn reverse(&self, target: u64) -> Vec<u64> {
+        let mut ans = Vec::new();
+
+        if target%self.0 == 0 {
+            ans.push(target/self.0);
+        }
+
+        if target>self.0 {
+            ans.push(target-self.0);
+        }
+
+        ans
+    }
+
+    fn value(&self) -> u64 {
+        self.0
+    }
+
+}
+
+struct OpPart2 {
+    operand: u64,
+    pow10: u64
+}
+
+impl OpPart2 {
+    fn new(v: u64) -> Self {
+        OpPart2 {
+            operand: v,
+            pow10: log10ceil(v)
+        }
+    }
+}
+
+impl ReverseOp for OpPart2 {
+    fn reverse(&self, target: u64) -> Vec<u64> {
+        let mut ans = Vec::new();
+
+        if target%self.operand == 0 {
+            ans.push(target/self.operand);
+        }
+
+        if target>self.operand {
+            ans.push(target-self.operand);
+        }
+
+        if target%self.pow10 == self.operand {
+            ans.push(target/self.pow10);
+        }
+
+        ans
+    }
+
+    fn value(&self) -> u64 {
+        self.operand
+    }
+}
+
+
+fn is_achieavable_fast(target: u64, operands: &[impl ReverseOp]) -> bool {
     if operands.is_empty() {
         panic!("SHould not happen");
     }
@@ -55,63 +109,36 @@ fn is_achieavable_part_two_fast(target: u64, operands: &[u64]) -> bool {
         return false;
     }
     if operands.len() == 1 {
-        return  target == operands[0];
+        return  target == operands[0].value();
     }
 
 
     let rest = &operands[0..operands.len()-1];
-    let last = *operands.last().unwrap();
+    let last = operands.last().unwrap();
 
+    let next_targets = last.reverse(target);
 
-    // try multiply
-
-    if target%last == 0 {
-        let new_target = target/last;
-        if is_achieavable_part_two_fast(new_target, rest) {
-            return true;
-        }
-    }
-
-    // Try concat
-
-    let pow10 = log10ceil(last);
-    if target%pow10 == last {
-        let new_target = target/pow10;
-        if is_achieavable_part_two_fast(new_target, rest) {
-            return true;
-        }
-    }
-
-    if target > last {
-        is_achieavable_part_two_fast(target-last, rest)
-    } else {
-        false
-    }
+    next_targets.iter()
+        .any(|p| is_achieavable_fast(*p, &rest))
 }
 
 impl Puzzle {
     fn is_achieavable_part_one(&self) -> bool {
-        let mut frontier = HashSet::new();
-        let mut operands = self.operands.iter().copied();
-        frontier.insert(operands.next().unwrap());
-
-        while let Some(v) = operands.next() {
-            let mut new_frontier = HashSet::new();
-            for f in frontier {
-                if f <= self.target {
-                    new_frontier.insert(f + v);
-                    new_frontier.insert(f * v);
-                }
-            }
-
-            frontier = new_frontier;
-        }
-
-        frontier.contains(&self.target)
+        let operands =
+            self.operands
+                .iter()
+                .map(|v| OpPart1(*v))
+                .collect::<Vec<_>>();
+        is_achieavable_fast(self.target, &operands)
     }
 
     fn is_achieavable_part_two(&self) -> bool {
-        is_achieavable_part_two_fast(self.target, &self.operands)
+        let operands =
+            self.operands
+                .iter()
+                .map(|v| OpPart2::new(*v))
+                .collect::<Vec<_>>();
+        is_achieavable_fast(self.target, &operands)
     }
 }
 
