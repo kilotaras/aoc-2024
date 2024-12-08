@@ -35,6 +35,60 @@ fn concat(x: u64, y: u64) -> u64 {
     x + y
 }
 
+
+fn log10ceil(x: u64) -> u64 {
+    let mut ans = 1;
+    while ans <= x {
+        ans *= 10;
+    }
+
+    ans
+}
+
+
+fn is_achieavable_part_two_fast(target: u64, operands: &[u64]) -> bool {
+    if operands.is_empty() {
+        panic!("SHould not happen");
+    }
+
+    if target <= 0 {
+        return false;
+    }
+    if operands.len() == 1 {
+        return  target == operands[0];
+    }
+
+
+    let rest = &operands[0..operands.len()-1];
+    let last = *operands.last().unwrap();
+
+
+    // try multiply
+
+    if target%last == 0 {
+        let new_target = target/last;
+        if is_achieavable_part_two_fast(new_target, rest) {
+            return true;
+        }
+    }
+
+    // Try concat
+
+    let pow10 = log10ceil(last);
+    if target%pow10 == last {
+        let new_target = target/pow10;
+        if is_achieavable_part_two_fast(new_target, rest) {
+            return true;
+        }
+    }
+
+    if target > last {
+        is_achieavable_part_two_fast(target-last, rest)
+    } else {
+        false
+    }
+}
+
 impl Puzzle {
     fn is_achieavable_part_one(&self) -> bool {
         let mut frontier = HashSet::new();
@@ -57,24 +111,7 @@ impl Puzzle {
     }
 
     fn is_achieavable_part_two(&self) -> bool {
-        let mut frontier = HashSet::new();
-        let mut operands = self.operands.iter().copied();
-        frontier.insert(operands.next().unwrap());
-
-        while let Some(v) = operands.next() {
-            let mut new_frontier = HashSet::new();
-            for f in frontier {
-                if f <= self.target {
-                    new_frontier.insert(f + v);
-                    new_frontier.insert(f * v);
-                    new_frontier.insert(concat(f, v));
-                }
-            }
-
-            frontier = new_frontier;
-        }
-
-        frontier.contains(&self.target)
+        is_achieavable_part_two_fast(self.target, &self.operands)
     }
 }
 
